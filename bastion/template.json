@@ -1,0 +1,67 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "bastionHosts_nimccfta_umbraco8_vnet_bastion_name": {
+            "defaultValue": "{your bastion host name}",
+            "type": "String"
+        },
+        "publicIPAddresses_nimccfta_umbraco8_vnet_ip_name": {
+            "defaultValue": "{your bastion host public IP address name}",
+            "type": "String"
+        },
+        "virtualNetworks_nimccfta_umbraco8_vnet_externalid": {
+            "defaultValue": "{your virtual network Azure resource ID}",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('publicIPAddresses_nimccfta_umbraco8_vnet_ip_name')]",
+            "location": "centralus",
+            "sku": {
+                "name": "Standard",
+                "tier": "Regional"
+            },
+            "properties": {
+                "ipAddress": "52.173.110.224",
+                "publicIPAddressVersion": "IPv4",
+                "publicIPAllocationMethod": "Static",
+                "idleTimeoutInMinutes": 4,
+                "ipTags": []
+            }
+        },
+        {
+            "type": "Microsoft.Network/bastionHosts",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('bastionHosts_nimccfta_umbraco8_vnet_bastion_name')]",
+            "location": "centralus",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_nimccfta_umbraco8_vnet_ip_name'))]"
+            ],
+            "sku": {
+                "name": "Basic"
+            },
+            "properties": {
+                "dnsName": "bst-fb801793-b7ec-495f-a9e4-26fd3ce1adb1.bastion.azure.com",
+                "ipConfigurations": [
+                    {
+                        "name": "IpConf",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_nimccfta_umbraco8_vnet_ip_name'))]"
+                            },
+                            "subnet": {
+                                "id": "[concat(parameters('virtualNetworks_nimccfta_umbraco8_vnet_externalid'), '/subnets/AzureBastionSubnet')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

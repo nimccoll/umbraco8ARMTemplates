@@ -1,0 +1,15 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "sites_nimccfta_umbraco8_e2e_bo_name": {
+            "value": null
+        },
+        "serverfarms_nimccfta_umbraco8_e2e_bo_asp_name": {
+            "value": null
+        },
+        "virtualNetworks_nimccfta_umbraco8_vnet_externalid": {
+            "value": null
+        }
+    }
+}

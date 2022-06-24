@@ -1,0 +1,82 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vaults_nimccfta_umbraco8_e2e_kv_name": {
+            "defaultValue": "{your keyvault name}",
+            "type": "String"
+        },
+        "virtualnetworks_nimccfta_umbraco8_vnet_externalid": {
+            "defaultValue": "{your virtual network Azure resource ID}",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[parameters('vaults_nimccfta_umbraco8_e2e_kv_name')]",
+            "location": "centralus",
+            "properties": {
+                "sku": {
+                    "family": "A",
+                    "name": "Standard"
+                },
+                "tenantId": "{your Azure AD Tenant ID}",
+                "networkAcls": {
+                    "bypass": "AzureServices",
+                    "defaultAction": "Deny",
+                    "ipRules": [],
+                    "virtualNetworkRules": [
+                        {
+                            "id": "[concat(parameters('virtualnetworks_nimccfta_umbraco8_vnet_externalid'), '/subnets/vnetint')]",
+                            "ignoreMissingVnetServiceEndpoint": false
+                        },
+                        {
+                            "id": "[concat(parameters('virtualnetworks_nimccfta_umbraco8_vnet_externalid'), '/subnets/vnetint2')]",
+                            "ignoreMissingVnetServiceEndpoint": false
+                        }
+                    ]
+                },
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": false,
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 90,
+                "enableRbacAuthorization": false,
+                "vaultUri": "[concat('https://', parameters('vaults_nimccfta_umbraco8_e2e_kv_name'), '.vault.azure.net/')]",
+                "provisioningState": "Succeeded",
+                "publicNetworkAccess": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults/secrets",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('vaults_nimccfta_umbraco8_e2e_kv_name'), '/umbraco8-e2e-sql-connectionstring')]",
+            "location": "centralus",
+            "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('vaults_nimccfta_umbraco8_e2e_kv_name'))]"
+            ],
+            "properties": {
+                "attributes": {
+                    "enabled": true
+                }
+            }
+        },
+        {
+            "type": "Microsoft.KeyVault/vaults/secrets",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('vaults_nimccfta_umbraco8_e2e_kv_name'), '/umbraco8-e2e-stg-connectionstring')]",
+            "location": "centralus",
+            "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('vaults_nimccfta_umbraco8_e2e_kv_name'))]"
+            ],
+            "properties": {
+                "attributes": {
+                    "enabled": true
+                }
+            }
+        }
+    ]
+}

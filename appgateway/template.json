@@ -1,0 +1,277 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "applicationGateways_nimccfta_umbraco8_appgw_name": {
+            "defaultValue": "{your appgateway name}",
+            "type": "String"
+        },
+        "publicIPAddresses_nimccfta_umbraco8_appgw_ip_name": {
+            "defaultValue": "{your appgateway public IP address name}",
+            "type": "String"
+        },
+        "ApplicationGatewayWebApplicationFirewallPolicies_nimccfta_umbraco8_waf_name": {
+            "defaultValue": "{your appgateway WAF policy name}",
+            "type": "String"
+        },
+        "virtualNetworks_nimccfta_umbraco8_vnet_externalid": {
+            "defaultValue": "{your virtual network Azure resource ID}",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('ApplicationGatewayWebApplicationFirewallPolicies_nimccfta_umbraco8_waf_name')]",
+            "location": "centralus",
+            "properties": {
+                "customRules": [],
+                "policySettings": {
+                    "requestBodyCheck": true,
+                    "maxRequestBodySizeInKb": 128,
+                    "fileUploadLimitInMb": 100,
+                    "state": "Enabled",
+                    "mode": "Detection"
+                },
+                "managedRules": {
+                    "managedRuleSets": [
+                        {
+                            "ruleSetType": "OWASP",
+                            "ruleSetVersion": "3.1",
+                            "ruleGroupOverrides": []
+                        }
+                    ],
+                    "exclusions": []
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('publicIPAddresses_nimccfta_umbraco8_appgw_ip_name')]",
+            "location": "centralus",
+            "sku": {
+                "name": "Standard",
+                "tier": "Regional"
+            },
+            "properties": {
+                "ipAddress": "40.86.115.184",
+                "publicIPAddressVersion": "IPv4",
+                "publicIPAllocationMethod": "Static",
+                "idleTimeoutInMinutes": 4,
+                "ipTags": []
+            }
+        },
+        {
+            "type": "Microsoft.Network/applicationGateways",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('applicationGateways_nimccfta_umbraco8_appgw_name')]",
+            "location": "centralus",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_nimccfta_umbraco8_appgw_ip_name'))]",
+                "[resourceId('Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies', parameters('ApplicationGatewayWebApplicationFirewallPolicies_nimccfta_umbraco8_waf_name'))]"
+            ],
+            "properties": {
+                "sku": {
+                    "name": "WAF_v2",
+                    "tier": "WAF_v2",
+                    "capacity": 1
+                },
+                "gatewayIPConfigurations": [
+                    {
+                        "name": "appGatewayIpConfig",
+                        "properties": {
+                            "subnet": {
+                                "id": "[concat(parameters('virtualNetworks_nimccfta_umbraco8_vnet_externalid'), '/subnets/appgateway')]"
+                            }
+                        }
+                    }
+                ],
+                "sslCertificates": [],
+                "trustedRootCertificates": [],
+                "trustedClientCertificates": [],
+                "sslProfiles": [],
+                "frontendIPConfigurations": [
+                    {
+                        "name": "appGwPublicFrontendIp",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddresses_nimccfta_umbraco8_appgw_ip_name'))]"
+                            }
+                        }
+                    },
+                    {
+                        "name": "appGwPrivateFrontendIp",
+                        "properties": {
+                            "privateIPAddress": "10.0.6.4",
+                            "privateIPAllocationMethod": "Static",
+                            "subnet": {
+                                "id": "[concat(parameters('virtualNetworks_nimccfta_umbraco8_vnet_externalid'), '/subnets/appgateway')]"
+                            }
+                        }
+                    }
+                ],
+                "frontendPorts": [
+                    {
+                        "name": "port_80",
+                        "properties": {
+                            "port": 80
+                        }
+                    },
+                    {
+                        "name": "port_8080",
+                        "properties": {
+                            "port": 8080
+                        }
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "umbraco8-fe",
+                        "properties": {
+                            "backendAddresses": [
+                                {
+                                    "ipAddress": "10.0.2.4"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "backendHttpSettingsCollection": [
+                    {
+                        "name": "umbrack8-fe-settings",
+                        "properties": {
+                            "port": 443,
+                            "protocol": "Https",
+                            "cookieBasedAffinity": "Disabled",
+                            "hostName": "{your frontend webapp root URL}",
+                            "pickHostNameFromBackendAddress": false,
+                            "requestTimeout": 20
+                        }
+                    }
+                ],
+                "httpListeners": [
+                    {
+                        "name": "umbraco8-80-listener",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/frontendIPConfigurations/appGwPublicFrontendIp')]"
+                            },
+                            "frontendPort": {
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/frontendPorts/port_80')]"
+                            },
+                            "protocol": "Http",
+                            "hostNames": [],
+                            "requireServerNameIndication": false
+                        }
+                    }
+                ],
+                "urlPathMaps": [
+                    {
+                        "name": "umbraco8-8080-rule",
+                        "properties": {
+                            "defaultBackendAddressPool": {
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/backendAddressPools/umbraco8-fe')]"
+                            },
+                            "defaultBackendHttpSettings": {
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/backendHttpSettingsCollection/umbrack8-fe-settings')]"
+                            },
+                            "pathRules": [
+                                {
+                                    "name": "backend",
+                                    "properties": {
+                                        "paths": [
+                                            "/umbraco*"
+                                        ],
+                                        "redirectConfiguration": {
+                                            "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/redirectConfigurations/umbraco8-8080-rule_backend')]"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "umbraco8-rule",
+                        "properties": {
+                            "defaultBackendAddressPool": {
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/backendAddressPools/umbraco8-fe')]"
+                            },
+                            "defaultBackendHttpSettings": {
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/backendHttpSettingsCollection/umbrack8-fe-settings')]"
+                            },
+                            "pathRules": [
+                                {
+                                    "name": "backoffice",
+                                    "properties": {
+                                        "paths": [
+                                            "/umbraco*"
+                                        ],
+                                        "redirectConfiguration": {
+                                            "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/redirectConfigurations/umbraco8-rule_backoffice')]"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "requestRoutingRules": [
+                    {
+                        "name": "umbraco8-rule",
+                        "properties": {
+                            "ruleType": "PathBasedRouting",
+                            "priority": 10,
+                            "httpListener": {
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/httpListeners/umbraco8-80-listener')]"
+                            },
+                            "urlPathMap": {
+                                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/urlPathMaps/umbraco8-rule')]"
+                            }
+                        }
+                    }
+                ],
+                "probes": [],
+                "rewriteRuleSets": [],
+                "redirectConfigurations": [
+                    {
+                        "name": "umbraco8-8080-rule_backend",
+                        "properties": {
+                            "redirectType": "Permanent",
+                            "targetUrl": "https://{your backoffice webapp root URL}",
+                            "includePath": true,
+                            "includeQueryString": true,
+                            "pathRules": [
+                                {
+                                    "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/urlPathMaps/umbraco8-8080-rule/pathRules/backend')]"
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "name": "umbraco8-rule_backoffice",
+                        "properties": {
+                            "redirectType": "Permanent",
+                            "targetUrl": "https://{your backoffice webapp root URL}",
+                            "includePath": true,
+                            "includeQueryString": true,
+                            "pathRules": [
+                                {
+                                    "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGateways_nimccfta_umbraco8_appgw_name')), '/urlPathMaps/umbraco8-rule/pathRules/backoffice')]"
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "privateLinkConfigurations": [],
+                "enableHttp2": false,
+                "firewallPolicy": {
+                    "id": "[resourceId('Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies', parameters('ApplicationGatewayWebApplicationFirewallPolicies_nimccfta_umbraco8_waf_name'))]"
+                }
+            }
+        }
+    ]
+}

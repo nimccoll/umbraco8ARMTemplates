@@ -1,0 +1,24 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "sites_nimccfta_umbraco8_e2e_fe_name": {
+            "value": null
+        },
+        "serverfarms_nimccfta_umbraco8_e2e_fe_asp_name": {
+            "value": null
+        },
+        "privateEndpoints_nimccfta_umbraco8_e2e_fe_pe_name": {
+            "value": null
+        },
+        "privateDnsZones_privatelink_azurewebsites_net_name": {
+            "value": null
+        },
+        "networkInterfaces_nimccfta_umbraco8_e2e_fe_pe_nic_9edb14a5_47b0_4bf5_922b_a05d895fa8a2_name": {
+            "value": null
+        },
+        "virtualNetworks_nimccfta_umbraco8_vnet_externalid": {
+            "value": null
+        }
+    }
+}

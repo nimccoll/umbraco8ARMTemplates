@@ -1,0 +1,18 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "virtualMachines_nimccfta_umbraco8_jb_name": {
+            "value": null
+        },
+        "networkInterfaces_nimccfta_umbraco8394_name": {
+            "value": null
+        },
+        "networkSecurityGroups_nimccfta_umbraco8_jb_nsg_name": {
+            "value": null
+        },
+        "virtualNetworks_nimccfta_umbraco8_vnet_externalid": {
+            "value": null
+        }
+    }
+}

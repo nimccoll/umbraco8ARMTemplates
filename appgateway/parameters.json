@@ -1,0 +1,18 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "applicationGateways_nimccfta_umbraco8_appgw_name": {
+            "value": null
+        },
+        "publicIPAddresses_nimccfta_umbraco8_appgw_ip_name": {
+            "value": null
+        },
+        "ApplicationGatewayWebApplicationFirewallPolicies_nimccfta_umbraco8_waf_name": {
+            "value": null
+        },
+        "virtualNetworks_nimccfta_umbraco8_vnet_externalid": {
+            "value": null
+        }
+    }
+}

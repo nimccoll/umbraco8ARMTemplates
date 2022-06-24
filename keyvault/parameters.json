@@ -1,0 +1,12 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vaults_nimccfta_umbraco8_e2e_kv_name": {
+            "value": null
+        },
+        "virtualnetworks_nimccfta_umbraco8_vnet_externalid": {
+            "value": null
+        }
+    }
+}

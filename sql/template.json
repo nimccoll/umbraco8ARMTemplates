@@ -1,0 +1,802 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vulnerabilityAssessments_Default_storageContainerPath": {
+            "type": "SecureString"
+        },
+        "servers_nimccfta_sql_umbraco8_e2e_name": {
+            "defaultValue": "{your Azure SQL Server name}",
+            "type": "String"
+        },
+        "privateEndpoints_nimccfta_sql_umbraco8_e2e_pe_name": {
+            "defaultValue": "{your Azure SQL Server private endpoint name}",
+            "type": "String"
+        },
+        "privateDnsZones_privatelink_database_windows_net_name": {
+            "defaultValue": "privatelink.database.windows.net",
+            "type": "String"
+        },
+        "networkInterfaces_nimccfta_sql_umbraco8_e2e_pe_nic_name": {
+            "defaultValue": "{your Azure SQL Server private endpoint NIC name}",
+            "type": "String"
+        },
+        "virtualNetworks_nimccfta_umbraco8_vnet_externalid": {
+            "defaultValue": "{your virtual network Azure resource ID}",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('networkInterfaces_nimccfta_sql_umbraco8_e2e_pe_nic_name')]",
+            "location": "centralus",
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "privateEndpointIpConfig.53b208b1-47c8-46ed-abb3-f10d4b24965c",
+                        "properties": {
+                            "privateIPAddress": "10.0.3.4",
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[concat(parameters('virtualNetworks_nimccfta_umbraco8_vnet_externalid'), '/subnets/sql')]"
+                            },
+                            "primary": true,
+                            "privateIPAddressVersion": "IPv4"
+                        }
+                    }
+                ],
+                "dnsSettings": {
+                    "dnsServers": []
+                },
+                "enableAcceleratedNetworking": false,
+                "enableIPForwarding": false
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones",
+            "apiVersion": "2018-09-01",
+            "name": "[parameters('privateDnsZones_privatelink_database_windows_net_name')]",
+            "location": "global",
+            "properties": {
+                "maxNumberOfRecordSets": 25000,
+                "maxNumberOfVirtualNetworkLinks": 1000,
+                "maxNumberOfVirtualNetworkLinksWithRegistration": 100,
+                "numberOfRecordSets": 2,
+                "numberOfVirtualNetworkLinks": 1,
+                "numberOfVirtualNetworkLinksWithRegistration": 0,
+                "provisioningState": "Succeeded"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[parameters('servers_nimccfta_sql_umbraco8_e2e_name')]",
+            "location": "centralus",
+            "kind": "v12.0",
+            "properties": {
+                "administratorLogin": "{your Azure SQL Server administrator login}",
+                "version": "12.0",
+                "publicNetworkAccess": "Disabled",
+                "administrators": {
+                    "administratorType": "ActiveDirectory",
+                    "principalType": "User",
+                    "login": "{your Azure AD user account}",
+                    "sid": "{your Azure AD user SID}",
+                    "tenantId": "{your Azure AD tenant ID}",
+                    "azureADOnlyAuthentication": false
+                },
+                "restrictOutboundNetworkAccess": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/A",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(parameters('privateDnsZones_privatelink_database_windows_net_name'), '/nimccfta-sql-umbraco8-e2e')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('privateDnsZones_privatelink_database_windows_net_name'))]"
+            ],
+            "properties": {
+                "metadata": {
+                    "creator": "created by private endpoint nimccfta-sql-umbraco8-e2e-pe with resource guid 8d78b9f2-b07a-4af5-a53e-b859a2b46d44"
+                },
+                "ttl": 10,
+                "aRecords": [
+                    {
+                        "ipv4Address": "10.0.3.4"
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/SOA",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(parameters('privateDnsZones_privatelink_database_windows_net_name'), '/@')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('privateDnsZones_privatelink_database_windows_net_name'))]"
+            ],
+            "properties": {
+                "ttl": 3600,
+                "soaRecord": {
+                    "email": "azureprivatedns-host.microsoft.com",
+                    "expireTime": 2419200,
+                    "host": "azureprivatedns.net",
+                    "minimumTtl": 10,
+                    "refreshTime": 3600,
+                    "retryTime": 300,
+                    "serialNumber": 1
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+            "apiVersion": "2018-09-01",
+            "name": "[concat(parameters('privateDnsZones_privatelink_database_windows_net_name'), '/qxdpdlf4kvk5a')]",
+            "location": "global",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('privateDnsZones_privatelink_database_windows_net_name'))]"
+            ],
+            "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                    "id": "[parameters('virtualNetworks_nimccfta_umbraco8_vnet_externalid')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-11-01",
+            "name": "[parameters('privateEndpoints_nimccfta_sql_umbraco8_e2e_pe_name')]",
+            "location": "centralus",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[parameters('privateEndpoints_nimccfta_sql_umbraco8_e2e_pe_name')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]",
+                            "groupIds": [
+                                "sqlServer"
+                            ],
+                            "privateLinkServiceConnectionState": {
+                                "status": "Approved",
+                                "description": "Auto-approved",
+                                "actionsRequired": "None"
+                            }
+                        }
+                    }
+                ],
+                "manualPrivateLinkServiceConnections": [],
+                "subnet": {
+                    "id": "[concat(parameters('virtualNetworks_nimccfta_umbraco8_vnet_externalid'), '/subnets/sql')]"
+                },
+                "customDnsConfigs": []
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/administrators",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/ActiveDirectory')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "administratorType": "ActiveDirectory",
+                "login": "{your Azure AD user account}",
+                "sid": "{your Azure AD user account SID}",
+                "tenantId": "{your Azure AD tenant ID}"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/advancedThreatProtectionSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/CreateIndex')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/DbParameterization')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/DefragmentIndex')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/DropIndex')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/ForceLastGoodPlan')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/auditingPolicies",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/Default')]",
+            "location": "Central US",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "auditingState": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/auditingSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "auditActionsAndGroups": [],
+                "isStorageSecondaryKeyInUse": false,
+                "isAzureMonitorTargetEnabled": false,
+                "isManagedIdentityInUse": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/azureADOnlyAuthentications",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "azureADOnlyAuthentication": false
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/connectionPolicies",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/default')]",
+            "location": "centralus",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "connectionType": "Default"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms')]",
+            "location": "centralus",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "sku": {
+                "name": "Standard",
+                "tier": "Standard",
+                "capacity": 20
+            },
+            "kind": "v12.0,user",
+            "properties": {
+                "collation": "SQL_Latin1_General_CP1_CI_AS",
+                "maxSizeBytes": 5368709120,
+                "catalogCollation": "SQL_Latin1_General_CP1_CI_AS",
+                "zoneRedundant": false,
+                "readScale": "Disabled",
+                "requestedBackupStorageRedundancy": "Local",
+                "maintenanceConfigurationId": "/subscriptions/b0ea2245-2d2d-4ba3-baa5-57d0ebfb643a/providers/Microsoft.Maintenance/publicMaintenanceConfigurations/SQL_Default",
+                "isLedgerOn": false
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/advancedThreatProtectionSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/master/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/auditingPolicies",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/master/Default')]",
+            "location": "Central US",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "auditingState": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/auditingSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/master/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "isAzureMonitorTargetEnabled": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/extendedAuditingSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/master/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "isAzureMonitorTargetEnabled": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/geoBackupPolicies",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/master/Default')]",
+            "location": "Central US",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/ledgerDigestUploads",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/master/Current')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/securityAlertPolicies",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/master/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled",
+                "disabledAlerts": [
+                    ""
+                ],
+                "emailAddresses": [
+                    ""
+                ],
+                "emailAccountAdmins": false,
+                "retentionDays": 0
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/transparentDataEncryption",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/master/Current')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/vulnerabilityAssessments",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/master/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "recurringScans": {
+                    "isEnabled": false,
+                    "emailSubscriptionAdmins": true
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/devOpsAuditingSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "isAzureMonitorTargetEnabled": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/encryptionProtector",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/current')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "kind": "servicemanaged",
+            "properties": {
+                "serverKeyName": "ServiceManaged",
+                "serverKeyType": "ServiceManaged",
+                "autoRotationEnabled": false
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/extendedAuditingSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "auditActionsAndGroups": [],
+                "isStorageSecondaryKeyInUse": false,
+                "isAzureMonitorTargetEnabled": false,
+                "isManagedIdentityInUse": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/firewallRules",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/AllowAllWindowsAzureIps')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Sql/servers/keys",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/ServiceManaged')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "kind": "servicemanaged",
+            "properties": {
+                "serverKeyType": "ServiceManaged"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/securityAlertPolicies",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Enabled",
+                "disabledAlerts": [
+                    ""
+                ],
+                "emailAddresses": [
+                    ""
+                ],
+                "emailAccountAdmins": false,
+                "retentionDays": 0
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/vulnerabilityAssessments",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "recurringScans": {
+                    "isEnabled": false,
+                    "emailSubscriptionAdmins": true
+                },
+                "storageContainerPath": "[parameters('vulnerabilityAssessments_Default_storageContainerPath')]"
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(parameters('privateEndpoints_nimccfta_sql_umbraco8_e2e_pe_name'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpoints_nimccfta_sql_umbraco8_e2e_pe_name'))]",
+                "[resourceId('Microsoft.Network/privateDnsZones', parameters('privateDnsZones_privatelink_database_windows_net_name'))]"
+            ],
+            "properties": {
+                "privateDnsZoneConfigs": [
+                    {
+                        "name": "privatelink-database-windows-net",
+                        "properties": {
+                            "privateDnsZoneId": "[resourceId('Microsoft.Network/privateDnsZones', parameters('privateDnsZones_privatelink_database_windows_net_name'))]"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/advancedThreatProtectionSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/CreateIndex')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/DbParameterization')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/DefragmentIndex')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/DropIndex')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/advisors",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/ForceLastGoodPlan')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "autoExecuteValue": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/auditingPolicies",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/Default')]",
+            "location": "Central US",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "auditingState": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/auditingSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "isAzureMonitorTargetEnabled": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "weeklyRetention": "PT0S",
+                "monthlyRetention": "PT0S",
+                "yearlyRetention": "PT0S",
+                "weekOfYear": 0
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/backupShortTermRetentionPolicies",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 7,
+                "diffBackupIntervalInHours": 24
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/extendedAuditingSettings",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "retentionDays": 0,
+                "isAzureMonitorTargetEnabled": false,
+                "state": "Disabled",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/geoBackupPolicies",
+            "apiVersion": "2014-04-01",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/Default')]",
+            "location": "Central US",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/ledgerDigestUploads",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/Current')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/securityAlertPolicies",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled",
+                "disabledAlerts": [
+                    ""
+                ],
+                "emailAddresses": [
+                    ""
+                ],
+                "emailAccountAdmins": false,
+                "retentionDays": 0
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/transparentDataEncryption",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/Current')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "state": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/databases/vulnerabilityAssessments",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/umbraco8-cms/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), 'umbraco8-cms')]",
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]"
+            ],
+            "properties": {
+                "recurringScans": {
+                    "isEnabled": false,
+                    "emailSubscriptionAdmins": true
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Sql/servers/privateEndpointConnections",
+            "apiVersion": "2021-11-01-preview",
+            "name": "[concat(parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '/', parameters('servers_nimccfta_sql_umbraco8_e2e_name'), '-pe-363229d8-56af-4d86-a1e9-9ade89448e10')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('servers_nimccfta_sql_umbraco8_e2e_name'))]",
+                "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpoints_nimccfta_sql_umbraco8_e2e_pe_name'))]"
+            ],
+            "properties": {
+                "privateEndpoint": {
+                    "id": "[resourceId('Microsoft.Network/privateEndpoints', parameters('privateEndpoints_nimccfta_sql_umbraco8_e2e_pe_name'))]"
+                },
+                "privateLinkServiceConnectionState": {
+                    "status": "Approved",
+                    "description": "Auto-approved"
+                }
+            }
+        }
+    ]
+}
